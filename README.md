@@ -9,3 +9,11 @@
 
 ## graphtool
 https://medium.com/@ronie/installing-graph-tool-for-python-3-on-anaconda-3f76d9004979
+
+
+Run these manually (don't ask, I don't know)
+```
+conda create --name graphtool python=3.6.2=0
+conda install gtk3 pygobject matplotlib graph-tool
+conda install ipython
+```
