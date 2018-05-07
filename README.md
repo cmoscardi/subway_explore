@@ -11,10 +11,22 @@
 https://medium.com/@ronie/installing-graph-tool-for-python-3-on-anaconda-3f76d9004979
 
 
-Run these manually (don't ask, I don't know)
+Run *each line*  manually. The dependency solver breaks if you don't do exactly this, line-by-line. I kid you not.
+
 ```
-conda create --name graphtool python=3.6.2=0
-conda install gtk3 pygobject matplotlib graph-tool
+conda config --add channels conda-forge
+conda config --add channels ostrokach-forge
+conda config --add channels pkgw-forge
+```
+
+```
+conda create --name graphtool python=3.6
+conda install graph-tool=2.26
 conda install ipython
-conda install --channel conda-forge/label/dev geopandas
+conda install gdal # MAKE SURE THIS COMES FROM CONDA-FORGE
+conda install geopandas # 
+conda install gtk3 pygobject
+conda install networkx
 ```
+
+You can turn the `conda install`s into a script by adding a `-y` flag, but you do this at your own risk.
