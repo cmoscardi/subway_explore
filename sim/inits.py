@@ -16,8 +16,8 @@ def init_passenger(o, d, t, skim_graph):
         shortest = skim_graph[o][d]['weight']
     except:
         raise
-    return Passenger(o, d, t, t + timedelta(minutes=OMEGA), 
-                     t + timedelta(minutes=(shortest + DELTA)))
+    return Passenger(o, d, t, t + timedelta(seconds=OMEGA), 
+                     t + timedelta(seconds=(shortest + DELTA)))
 
 def init_vehicle(x, y):
     BASE_VEHICLE = {"capacity": VEHICLE_CAPACITY,

@@ -75,7 +75,7 @@ def legal(pd_order, n_passengers, capacity):
         cur_count += (1 if p_or_d == 'p' else -1)
         if cur_count > capacity:
             return False
-    for indices in indices_by_passenger.itervalues():
+    for indices in indices_by_passenger.values():
         if 'p' in indices and indices['p'] > indices['d']:
             return False
     return True
@@ -85,7 +85,7 @@ def compute_cost(t, time_to_first, skim_graph, pd_order):
     cur_time = t
     cur_stop = None
     passenger, p_or_d = pd_order[0]
-    ttf = timedelta(minutes=time_to_first)
+    ttf = timedelta(seconds=time_to_first)
     if p_or_d == 'p':            
         costs_by_passenger[passenger]['pickup_time'] = t + ttf
         cur_stop = passenger[0]
@@ -102,18 +102,18 @@ def compute_cost(t, time_to_first, skim_graph, pd_order):
             key = "dropoff_time"
             od = 1
         next_stop = passenger[od]
-        ttn = timedelta(minutes=skim_graph[cur_stop][next_stop]['weight'])
+        ttn = timedelta(seconds=skim_graph[cur_stop][next_stop]['weight'])
         next_time = cur_time + ttn
         costs_by_passenger[passenger][key] = next_time
         cur_stop = next_stop
         cur_time = next_time
     total_cost = 0
-    for passenger, cost in costs_by_passenger.iteritems():
+    for passenger, cost in costs_by_passenger.items():
         if "pickup_time" in cost and cost["pickup_time"] > passenger.tpl:
             return -1
         elif cost["dropoff_time"] > passenger.t_star:
             return -1
         sub_value = cost["pickup_time"] if "pickup_time" in cost else t
-        total_cost += (cost["dropoff_time"] - sub_value).total_seconds() / 60.
+        total_cost += (cost["dropoff_time"] - sub_value).total_seconds()
     #return costs_by_passenger
     return total_cost

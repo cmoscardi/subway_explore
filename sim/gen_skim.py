@@ -16,7 +16,7 @@ def process_g(ix1, ix2, s1, s2):
                                            ix2)
     return (ix1, ix2, l)
 
-def gen_skim_graph(rg, write_path=None, n_jobs=4):
+def gen_skim_graph(rg, write_path=None, n_jobs=112):
     print("==={} rows to process===").format(len(rg) * len(rg))
     g = (joblib.delayed(process_g)(ix1, ix2, s1, s2)\
          for ix1, s1 in rg.iterrows()\

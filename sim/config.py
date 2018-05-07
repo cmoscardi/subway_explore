@@ -1,11 +1,11 @@
 VEHICLE_CAPACITY = 4
 N_VEHICLES = 100
 
-# maximum waiting time, mins
-OMEGA = 5.
+# maximum waiting time, secs
+OMEGA = 10. * 60
 
-# maximum travel delay, mins
-DELTA = 5.
+# maximum travel delay, secs
+DELTA = 8. * 60
 
 # set to number of cores
 N_JOBS = 4

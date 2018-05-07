@@ -1,5 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
+import numpy as np
+import pandas as pd
+
+from .assign import assign
 from .config import N_VEHICLES, T_STEP, SIM_TIME
 from .inits import init_vehicle, init_passenger
 from .loader import load_road_graph, load_lion, merge_lion_road, load_skim_graph, load_demands, merge_stops_demands, load_turnstile_counts
@@ -28,24 +32,65 @@ class Sim(object):
 
 
     def step(self, debug=False):
+        seconds = (self.t - self.start).total_seconds()
+        origins_at_t = self.origins.loc[seconds]
+        dests = np.random.choice(self.destination_probs.index,
+                                 size=origins_at_t.sum(),
+                                 p=self.destination_probs)
+        self.passengers = []
+        counter = 0
+        for o, n in zip(origins_at_t.index, origins_at_t):
+            for i in range(n):
+                self.passengers.append(init_passenger(o, dests[counter], self.t, self.skim_graph))
+                counter = counter + 1
+
+        assert len(self.passengers) == origins_at_t.sum()
+
+        canonical_requests = self.demands_with_stops[(self.demands_with_stops["sim_time"] <= seconds) & (self.demands_with_stops["sim_time"] > (seconds - T_STEP))]
+
+        
+        if len(canonical_requests) > 0:
+            print("REQUEST!")
+
+        canonical_passengers = [init_passenger(r["mn_O_station"], 
+                                               r["mn_D_station"],
+                                               self.t,
+                                               self.skim_graph)\
+                                for ix, r in canonical_requests.iterrows()]
+        self.passengers += canonical_passengers
+
         if debug:
             print("RV graph generating....")
-        self.rr_g, self.rv_g = self.gen_rv_graph(self.t, self.requests, self.vehicles, debug=debug)
+        self.rr_g, self.rv_g = self.gen_rv_graph(self.t, self.passengers, self.vehicles, debug=debug)
         if debug:
             print("RV graph generating....done.")
             print("RTV graph generating....")
-        self.rtv_g = self.gen_rtv_graph(self.t, self.vehicles, self.rr_g, self.rv_g)
+        self.Tk, self.rtv_g = self.gen_rtv_graph(self.t, self.vehicles, self.rr_g, self.rv_g)
+        return self.Tk, self.rtv_g
         if debug:
             print("RTV graph generating....done.")
+        
+        self.assignment = assign(self.rtv_g, self.tk)
 
-        self.t = self.t + config.T_STEP
+        self.update_vehicles_passengers_t()
+
+    def update_vehicles_passengers_t(self):
+        vehicles_by_id = dict(self.vehicles)
+        for trips, v_id in self.assignment:
+            vehicle = vehicles_by_id[v_id]
+            vehicle["cur_xy"]
+        self.t = self.t + timedelta(seconds=T_STEP)
 
     def init_demands(self):
         """
         """
-        self.origins = np.random.poisson(self.turnstile_counts["lambda"], size=(SIM_TIME / T_STEP , len(self.turnstile_counts))
-        self.origins = pd.DataFrame(self.origins, index=np.arange(SIM_TIME, T_STEP))
+        self.origins = np.random.poisson(self.turnstile_counts["lambda"], size=(int(SIM_TIME / T_STEP) , len(self.turnstile_counts)))
+        self.origins = pd.DataFrame(self.origins, index=np.arange(0, SIM_TIME, T_STEP))
         self.origins.columns = self.turnstile_counts["stop_id"]
+
+        self.destination_probs = self.turnstile_counts.set_index("stop_id")["dest_prob"]
+
+        self.demands_with_stops["sim_time"] = self.demands_with_stops["TRP_DEP_HR"].apply(lambda x: x if x < 5 else 0) * 3600. + self.demands_with_stops["TRP_DEP_MIN"] * 60.
 
     def init(self):
         self.load()
@@ -60,11 +105,5 @@ class Sim(object):
         self.vehicles = [(i, init_vehicle(x, y)) for i, (x, y) in enumerate(x_ys)]
 
 
-        self.start = self.t = datetime.now()
+        self.start = self.t = datetime(2018, 1, 1)
         self.init_demands()
-        
-
-        self.requests = [init_passenger(d["mn_O_station"], d["mn_D_station"],
-                                          self.t, self.skim_graph)\
-                           for _, d in self.demands_with_stops.iterrows()\
-                           if d["index_right_o"] != d["index_right_d"]]

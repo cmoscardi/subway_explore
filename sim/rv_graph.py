@@ -45,20 +45,25 @@ def init_rv_graph(joined_stops, travel):
         return rr_g, rv_g
     return gen_rv_graph
 
-def plot_rv_graph(rr_g, rv_g, vehicles, stops, lion_rg):
+def plot_rv_graph(rr_g, rv_g, vehicles, stops, lion_rg, requests):
     ax = lion_rg.plot(alpha=.3, figsize=(16, 40))
     stops.loc[[n.o for n in rr_g.nodes]].plot(color='red', ax=ax)
     vehicles_by_index = dict(vehicles)
     for ix, v in vehicles:
         plt.scatter([v["cur_xy"].x], [v["cur_xy"].y], color='orange', s=36)
-    for p1, p2 in rr_g.edges.iterkeys():
+
+    xs = gpd.GeoSeries(stops.loc[[r.o for r in requests]].geometry_old).x
+    ys = gpd.GeoSeries(stops.loc[[r.o for r in requests]].geometry_old).y
+    ax.scatter(xs, ys, color='red', zorder=999)
+
+    for p1, p2 in rr_g.edges.keys():
         xs = gpd.GeoSeries(stops.loc[[p1.o, p2.o]].geometry_old).x
         ys = gpd.GeoSeries(stops.loc[[p1.o, p2.o]].geometry_old).y
-        plt.plot(xs, ys, color='green')
-    for v, p in rv_g.edges.iterkeys():
+        ax.plot(xs, ys, color='green')
+    for v, p in rv_g.edges.keys():
         if isinstance(p, int):
             v, p = p, v
         vehicle = vehicles_by_index[v]
-        plt.plot([vehicle["cur_xy"].x, stops.loc[p.o].geometry_old.x],
+        ax.plot([vehicle["cur_xy"].x, stops.loc[p.o].geometry_old.x],
                  [vehicle["cur_xy"].y, stops.loc[p.o].geometry_old.y],
                  color='yellow')

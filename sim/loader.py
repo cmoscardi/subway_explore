@@ -7,20 +7,20 @@ from shapely.geometry import Point
 
 from .helpers import uniform_str
 
-def load_road_graph(path="data/final_graph_1st_pass_nx_2.1.pkl",
+def load_road_graph(path="data/taxi_graphs/final_graph_hour_1.pkl",
                     fix=True):
     """
     fix: whether we need to update weights
     """
     road_graph = nx.read_gpickle(path)
-    for k, v in road_graph.edges.iteritems():
-        v['weight'] = 60. * v['dist'] / v['speed']
+    for k, v in road_graph.edges.items():
+        v['weight'] = v['dist'] / v['speed']
     return road_graph
 
 
 def merge_lion_road(lion, lion_nodes, road_graph):
     rg_indices = [(e["ix"], e["speed"])\
-                  for _, e in road_graph.edges.iteritems()]
+                  for _, e in road_graph.edges.items()]
     lion_only_rg = lion.loc[[r[0] for r in rg_indices]].copy()
     lion_only_rg["speed"] = [r[1] for r in rg_indices]
     concat = np.concatenate
@@ -30,7 +30,7 @@ def merge_lion_road(lion, lion_nodes, road_graph):
     return lion_only_rg, only_rg_nodes
 
 
-def load_skim_graph(path="data/skim_graph_20170424.pkl"):
+def load_skim_graph(path="data/taxi_graphs/1_am_station_skim_20180506.pkl"):
     """
     See gen_skim.py for generating
     """
@@ -38,7 +38,7 @@ def load_skim_graph(path="data/skim_graph_20170424.pkl"):
 
 
 def load_lion():
-    lion = gpd.read_file("data/mn_lines.shp")
+    lion = gpd.read_file("data/mn_lines.shp").to_crs(epsg=4326)
     lion_nodes = gpd.read_file("data/lion/lion.shp/node.shp").to_crs(epsg=4326)
 
 
@@ -66,7 +66,7 @@ def load_demands():
     return demands, stops
 
 def merge_stops_demands(stops, rg_nodes, demands):
-    stops["geometry"] = stops["geometry_old"].apply(lambda x: x.buffer(.002))
+    stops["geometry"] = gpd.GeoSeries(stops["geometry_old"]).buffer(.002)
     joined_stops = gpd.sjoin(stops, rg_nodes)
     joined_stops = joined_stops[~joined_stops.index.duplicated(keep='first')]
     demands_with_stops = demands.merge(joined_stops,
@@ -74,6 +74,7 @@ def merge_stops_demands(stops, rg_nodes, demands):
                                        left_on="mn_O_station")\
                             .merge(joined_stops, right_index=True, left_on="mn_D_station", suffixes=("_o", "_d"))
     demands_with_stops = gpd.GeoDataFrame(demands_with_stops)
+    demands_with_stops["geometry"] = demands_with_stops["geometry_o"]
     return joined_stops, demands_with_stops
 
 def load_turnstile_counts(joined_stops, sim_time, t_step):

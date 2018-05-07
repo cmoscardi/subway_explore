@@ -1,7 +1,10 @@
 from itertools import groupby
+import logging
 
 import networkx as nx
 assert nx.__version__ == "2.1"
+
+import numpy as np
 
 from .inits import Passenger
 
@@ -11,7 +14,10 @@ def init_rtv(travel):
         rtv_g = nx.Graph()
         Tks_for_vehicle = []
         for i, v in vehicles:
-            rv_edges = rv_g.edges(i)
+            try:
+                rv_edges = rv_g.edges(i)
+            except nx.NetworkXError:
+                continue
             Tk =[]
             # trips of size 1
             Tk.append([])
@@ -23,6 +29,7 @@ def init_rtv(travel):
                 rtv_g.add_edge(T, i, weight=rv_g.edges[(k, r)]['weight'])
                 Tk[0].append(T)
             
+            logging.debug("Size 1 done")
             # trips of size 2
             Tk.append([])
             for j, (r1, ) in enumerate(Tk[0]):
@@ -37,8 +44,10 @@ def init_rtv(travel):
                         rtv_g.add_edge(T, i, weight=a)
                         rtv_g.add_edge(r1, T)
                         rtv_g.add_edge(r2, T)
+            logging.debug("Size 2 done")
             # trips of size N
             for k in range(2, v["capacity"]):
+                logging.debug("Size %s done", k)
                 Tk.append([])
                 for j, t1 in enumerate(Tk[k - 1]):
                     for t2 in Tk[k-1][j + 1:]:
