@@ -24,7 +24,7 @@ conda create --name graphtool python=3.6
 conda install graph-tool=2.26
 conda install ipython
 conda install gdal # MAKE SURE THIS COMES FROM CONDA-FORGE
-conda install geopandas # 
+conda install geopandas # the dev version works and is better: conda install --channel conda-forge/label/dev geopandas
 conda install gtk3 pygobject
 conda install networkx
 ```
