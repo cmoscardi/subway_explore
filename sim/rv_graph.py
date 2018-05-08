@@ -10,13 +10,13 @@ def init_rv_graph(joined_stops, travel):
 
     def check_rr_edge(t, r1, r2, v):
         a, b = travel(t, v, [r1, r2])
-        if not a:
+        if a is None:
             return False
         return a
 
     def check_rv_edge(t, v, r):
         a, b = travel(t, v, [r])
-        if not a:
+        if a is None:
             return False
         return a
 
@@ -36,8 +36,8 @@ def init_rv_graph(joined_stops, travel):
                     rv_g.add_edge(r1, i, weight=a)
             
             stop = joined_stops.loc[r1.o]
-            x, y = stop["geometry_old"].x, stop["geometry_old"].y
-            fake_vehicle = init_vehicle(x, y)
+            x, y, node = stop["geometry_old"].x, stop["geometry_old"].y, stop["index_right"]
+            fake_vehicle = init_vehicle(x, y, node)
             for r2 in requests:
                 a = check_rr_edge(t, r1, r2, fake_vehicle)
                 if a:

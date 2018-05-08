@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 
 import numpy as np
 import pandas as pd
@@ -6,10 +7,10 @@ import pandas as pd
 from .assign import assign
 from .config import N_VEHICLES, T_STEP, SIM_TIME
 from .inits import init_vehicle, init_passenger
-from .loader import load_road_graph, load_lion, merge_lion_road, load_skim_graph, load_demands, merge_stops_demands, load_turnstile_counts
+from .loader import load_road_graph, load_lion, merge_lion_road, load_skim_graph, load_demands, merge_stops_demands, load_turnstile_counts, load_road_skim_graph
 from .rv_graph import init_rv_graph
 from .rtv_graph import init_rtv
-from .travel import init_time_to_stop, init_travel
+from .travel import init_travel
 
 class Sim(object):
     def load(self):
@@ -19,6 +20,8 @@ class Sim(object):
         self.lion_rg, self.rg_nodes = merge_lion_road(self.lion, self.lion_nodes, self.road_graph)
 
         self.skim_graph = load_skim_graph()
+        self.rgs = load_road_skim_graph()
+        self.road_skim_lookup = lambda x, y: self.rgs[2][self.rgs[1][x]][self.rgs[1][y]]
         self.demands, self.stops = load_demands()
         self.joined_stops, self.demands_with_stops = merge_stops_demands(self.stops, self.rg_nodes, self.demands)
         self.turnstile_counts = load_turnstile_counts(self.joined_stops, SIM_TIME, T_STEP)
@@ -26,8 +29,6 @@ class Sim(object):
 
 
 
-    def get_x_ys(self,  n_vehicles):
-        return ((s.geometry.x, s.geometry.y) for ix, s in self.rg_nodes.sample(n_vehicles).iterrows())
 
 
 
@@ -41,7 +42,10 @@ class Sim(object):
         counter = 0
         for o, n in zip(origins_at_t.index, origins_at_t):
             for i in range(n):
-                self.passengers.append(init_passenger(o, dests[counter], self.t, self.skim_graph))
+                self.passengers.append(init_passenger(o, dests[counter],
+						      self.t,
+                                                      self.joined_stops,
+                                                      self.road_skim_lookup))
                 counter = counter + 1
 
         assert len(self.passengers) == origins_at_t.sum()
@@ -55,7 +59,8 @@ class Sim(object):
         canonical_passengers = [init_passenger(r["mn_O_station"], 
                                                r["mn_D_station"],
                                                self.t,
-                                               self.skim_graph)\
+                                               self.joined_stops,
+                                               self.road_skim_lookup)\
                                 for ix, r in canonical_requests.iterrows()]
         self.passengers += canonical_passengers
 
@@ -65,12 +70,12 @@ class Sim(object):
         if debug:
             print("RV graph generating....done.")
             print("RTV graph generating....")
-        self.Tk, self.rtv_g = self.gen_rtv_graph(self.t, self.vehicles, self.rr_g, self.rv_g)
-        return self.Tk, self.rtv_g
+        self.Tk, self.rtv_g = self.gen_rtv_graph(self.t, self.vehicles, self.rv_g, self.rr_g)
         if debug:
             print("RTV graph generating....done.")
         
-        self.assignment = assign(self.rtv_g, self.tk)
+        self.assignment = assign(self.rtv_g, self.Tk)
+        return
 
         self.update_vehicles_passengers_t()
 
@@ -92,17 +97,19 @@ class Sim(object):
 
         self.demands_with_stops["sim_time"] = self.demands_with_stops["TRP_DEP_HR"].apply(lambda x: x if x < 5 else 0) * 3600. + self.demands_with_stops["TRP_DEP_MIN"] * 60.
 
+    def get_x_ys(self,  n_vehicles):
+        return ((s.geometry.x, s.geometry.y, ix) for ix, s in self.rg_nodes.sample(n_vehicles).iterrows())
+
     def init(self):
         self.load()
-        self.time_to_stop = init_time_to_stop(self.rg_nodes, self.road_graph)
-        self.travel = init_travel(self.joined_stops, self.skim_graph, self.time_to_stop)
+        self.travel = init_travel(self.joined_stops, self.skim_graph, self.road_skim_lookup)
         self.gen_rv_graph = init_rv_graph(self.joined_stops, self.travel)
         self.gen_rtv_graph = init_rtv(self.travel)
   
 
 
         x_ys = self.get_x_ys( N_VEHICLES)
-        self.vehicles = [(i, init_vehicle(x, y)) for i, (x, y) in enumerate(x_ys)]
+        self.vehicles = [(i, init_vehicle(x, y, node)) for i, (x, y, node) in enumerate(x_ys)]
 
 
         self.start = self.t = datetime(2018, 1, 1)

@@ -1,4 +1,7 @@
 import geopandas as gpd
+from graph_tool import load_graph
+from graph_tool.topology import shortest_distance
+
 import networkx as nx
 assert nx.__version__ == "2.1"
 import numpy as np
@@ -35,6 +38,13 @@ def load_skim_graph(path="data/taxi_graphs/1_am_station_skim_20180506.pkl"):
     See gen_skim.py for generating
     """
     return nx.read_gpickle(path)
+
+def load_road_skim_graph(path="data/taxi_graphs/final_graph_hour_0.graphml"):
+    g = load_graph(path)
+    vm = g.vertex_properties["_graphml_vertex_id"]
+    vmr = {vm[v]: v for v in g.vertices()}
+    skim_table = shortest_distance(g, weights=g.edge_properties["weight"])
+    return (g, vmr, skim_table)
 
 
 def load_lion():

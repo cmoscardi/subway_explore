@@ -16,7 +16,8 @@ def init_rtv(travel):
         for i, v in vehicles:
             try:
                 rv_edges = rv_g.edges(i)
-            except nx.NetworkXError:
+            except nx.NetworkXError as e:
+                logging.debug("vehicle {} failed".format(i))
                 continue
             Tk =[]
             # trips of size 1

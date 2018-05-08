@@ -14,6 +14,13 @@ def process_g(arg):
                                            ix2)
     return (ix1, ix2, l)
 
+<<<<<<< Updated upstream
+def gen_skim_graph(rg, write_path=None, n_jobs=112):
+    print("==={} rows to process===").format(len(rg) * len(rg))
+    g = (joblib.delayed(process_g)(ix1, ix2, s1, s2)\
+         for ix1, s1 in rg.iterrows()\
+         for ix2, s2 in rg.iterrows())
+=======
 def gen_skim_graph(write_path=None, n_jobs=12):
     print("==={} rows to process===".format(len(road_graph) * len(road_graph)))
     nodes = list(road_graph.nodes)
@@ -21,6 +28,7 @@ def gen_skim_graph(write_path=None, n_jobs=12):
     results = nodedb.map(process_g)
     with ProgressBar():
         final = results.compute()
+>>>>>>> Stashed changes
 
 
     skim_graph = nx.DiGraph()
