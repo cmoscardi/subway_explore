@@ -6,11 +6,12 @@ import pandas as pd
 
 from .assign import assign
 from .config import N_VEHICLES, T_STEP, SIM_TIME
-from .inits import init_vehicle, init_passenger
+from .inits import init_passenger
 from .loader import load_road_graph, load_lion, merge_lion_road, load_skim_graph, load_demands, merge_stops_demands, load_turnstile_counts, load_road_skim_graph
 from .rv_graph import init_rv_graph
 from .rtv_graph import init_rtv
 from .travel import init_travel
+from .vehicle import init_vehicle, move_vehicles
 
 class Sim(object):
     def load(self):
@@ -20,7 +21,7 @@ class Sim(object):
         self.lion_rg, self.rg_nodes = merge_lion_road(self.lion, self.lion_nodes, self.road_graph)
 
         self.skim_graph = load_skim_graph()
-        self.rgs = load_road_skim_graph()
+        self.g, self.vmr, self.skim = self.rgs = load_road_skim_graph()
         self.road_skim_lookup = lambda x, y: self.rgs[2][self.rgs[1][x]][self.rgs[1][y]]
         self.demands, self.stops = load_demands()
         self.joined_stops, self.demands_with_stops = merge_stops_demands(self.stops, self.rg_nodes, self.demands)
@@ -28,16 +29,7 @@ class Sim(object):
         print("====Done=====")
 
 
-
-
-
-
-    def step(self, debug=False):
-        seconds = (self.t - self.start).total_seconds()
-        origins_at_t = self.origins.loc[seconds]
-        dests = np.random.choice(self.destination_probs.index,
-                                 size=origins_at_t.sum(),
-                                 p=self.destination_probs)
+    def set_passengers(self, origins_at_t, dests, seconds):
         self.passengers = []
         counter = 0
         for o, n in zip(origins_at_t.index, origins_at_t):
@@ -63,27 +55,41 @@ class Sim(object):
                                                self.road_skim_lookup)\
                                 for ix, r in canonical_requests.iterrows()]
         self.passengers += canonical_passengers
+        self.passengers = set(self.passengers)
 
-        if debug:
-            print("RV graph generating....")
+    def step(self, debug=False):
+        seconds = (self.t - self.start).total_seconds()
+        origins_at_t = self.origins.loc[seconds]
+        dests = np.random.choice(self.destination_probs.index,
+                                 size=origins_at_t.sum(),
+                                 p=self.destination_probs)
+
+        self.set_passengers(origins_at_t, dests, seconds)
+
+        logging.debug("RV graph generating....")
         self.rr_g, self.rv_g = self.gen_rv_graph(self.t, self.passengers, self.vehicles, debug=debug)
-        if debug:
-            print("RV graph generating....done.")
-            print("RTV graph generating....")
+        logging.debug("RV graph generating....done.")
+
+        logging.debug("RTV graph generating....")
         self.Tk, self.rtv_g = self.gen_rtv_graph(self.t, self.vehicles, self.rv_g, self.rr_g)
-        if debug:
-            print("RTV graph generating....done.")
+        logging.debug("RTV graph generating....done.")
         
         self.assignment = assign(self.rtv_g, self.Tk)
-        return
+        logging.debug("Assignment is {}".format(self.assignment)
 
         self.update_vehicles_passengers_t()
 
     def update_vehicles_passengers_t(self):
-        vehicles_by_id = dict(self.vehicles)
-        for trips, v_id in self.assignment:
-            vehicle = vehicles_by_id[v_id]
-            vehicle["cur_xy"]
+        g, vmr, skim = self.rgs
+        to_remove = move_vehicles(self.assignment,
+                      self.vehicles,
+                      self.g,
+                      self.vmr,
+                      self.travel,
+                      self.t,
+                      self.joined_stops,
+                      self.lion_nodes)
+        self.passengers = self.passengers - to_remove
         self.t = self.t + timedelta(seconds=T_STEP)
 
     def init_demands(self):
@@ -108,7 +114,7 @@ class Sim(object):
   
 
 
-        x_ys = self.get_x_ys( N_VEHICLES)
+        x_ys = self.get_x_ys(N_VEHICLES)
         self.vehicles = [(i, init_vehicle(x, y, node)) for i, (x, y, node) in enumerate(x_ys)]
 
 

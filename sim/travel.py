@@ -1,8 +1,10 @@
 from collections import defaultdict, namedtuple
 from datetime import timedelta
+import logging
 from itertools import permutations, chain
 
 import geopandas as gpd
+from graph_tool import topology
 import matplotlib
 import matplotlib.pyplot as plt
 # big API changes make this a nightmare to run in nx 1.x
@@ -31,9 +33,11 @@ def init_travel(joined_stops, skim_graph, road_skim_lookup):
         min_cost = None
         # TODO: parallelize
         for pd_order in permutations(chain(pickups, dropoffs)):
+            logging.debug("trying permutation %s... ", pd_order)
             if not legal(pd_order, 
                          len(vehicle["passengers"]),
                          vehicle["capacity"]):
+                logging.debug("... it was illegal.")
                 continue
             first_stop = pd_order[0][0][0] if pd_order[0][1] == 'p' else pd_order[0][0][1]
             first_rg_node = joined_stops.loc[first_stop]["index_right"]
@@ -68,7 +72,10 @@ def compute_cost(t, time_to_first, joined_stops, road_skim_lookup, pd_order):
     cur_time = t
     cur_stop = None
     passenger, p_or_d = pd_order[0]
+    logging.debug("time is {}".format(t))
     ttf = timedelta(seconds=time_to_first)
+    logging.debug("ttf is {}".format(ttf))
+    #import pdb; pdb.set_trace()
     if p_or_d == 'p':            
         costs_by_passenger[passenger]['pickup_time'] = t + ttf
         cur_stop = passenger[0]
@@ -86,7 +93,7 @@ def compute_cost(t, time_to_first, joined_stops, road_skim_lookup, pd_order):
             od = 1
         next_stop = passenger[od]
         cur_node = joined_stops.loc[cur_stop]['index_right']
-        next_node = joined_stops.loc[cur_stop]['index_right']
+        next_node = joined_stops.loc[next_stop]['index_right']
         ttn = timedelta(seconds=road_skim_lookup(cur_node, next_node))
         next_time = cur_time + ttn
         costs_by_passenger[passenger][key] = next_time
@@ -101,3 +108,19 @@ def compute_cost(t, time_to_first, joined_stops, road_skim_lookup, pd_order):
         total_cost += (cost["dropoff_time"] - passenger.t_star).total_seconds()
     #return costs_by_passenger
     return total_cost
+
+def parse_travel_path(path, v, joined_stops, g, vmr):
+    path_nodes = []
+    path_edges = []
+    cur_node = v["cur_node"]
+    for r, p_or_d in path:
+        if p_or_d == 'p':
+            o_or_d = r.road_o
+        else:
+            o_or_d = r.road_d
+        nodes, edges = topology.shortest_path(g, vmr[cur_node], vmr[o_or_d])
+
+        path_nodes += [g.vertex_properties['_graphml_vertex_id'][n] for n in nodes]
+        path_edges += edges
+        cur_node = o_or_d
+    return path_nodes, path_edges

@@ -1,10 +1,11 @@
-from .inits import init_vehicle
 from datetime import timedelta
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import networkx as nx
 assert nx.__version__ == "2.1"
+
+from .vehicle import init_vehicle
 
 def init_rv_graph(joined_stops, travel):
 

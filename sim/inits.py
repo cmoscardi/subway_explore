@@ -22,16 +22,6 @@ def init_passenger(o, d, t, joined_stops, road_skim_lookup):
                      t + timedelta(seconds=(shortest)),
                      road_o, road_d)
 
-def init_vehicle(x, y, rg_node):
-    BASE_VEHICLE = {"capacity": VEHICLE_CAPACITY,
-                    "passengers": [],
-                    "cur_xy": Point(x, y),
-                    "cur_node": rg_node,
-                    "next_node": None,
-                    "cur_route": [],
-                    "ridership_history": []} # tuples of the form (start_t, end_t, n)
-    
-    return BASE_VEHICLE.copy()
 
 def draw_requests(requests, lion_rg, joined_stops, with_d=True):
     ax = lion_rg.plot(figsize=(16, 40))

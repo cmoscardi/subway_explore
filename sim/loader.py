@@ -85,6 +85,7 @@ def merge_stops_demands(stops, rg_nodes, demands):
                             .merge(joined_stops, right_index=True, left_on="mn_D_station", suffixes=("_o", "_d"))
     demands_with_stops = gpd.GeoDataFrame(demands_with_stops)
     demands_with_stops["geometry"] = demands_with_stops["geometry_o"]
+    joined_stops["geometry"] = gpd.GeoSeries(joined_stops["geometry_old"])
     return joined_stops, demands_with_stops
 
 def load_turnstile_counts(joined_stops, sim_time, t_step):

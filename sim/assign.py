@@ -4,6 +4,7 @@ import numpy as np
 import networkx as nx
 
 from .config import T_STEP
+from .travel import parse_travel_path
 
 def greedy_assign(rtvg, T):
     R_ok = set()
@@ -25,59 +26,25 @@ def greedy_assign(rtvg, T):
     return assignment
 
 
-def move_vehicles(assignment, vehicles, g, vmr):
-    vehicles_by_id = dict(vehicles)
-    for trip, vid in assignment:
-        v = vehicles_by_id[vid]
-        nodes, edges = topology.shortest_path(g, vmr[v['cur_node']])
-        total_time = 0.
-        # this should be the stopping index (So 1 greater than last edge)
-        max_i = 0
-        for i, e in enumerate(edges):
-            weight = g.edge_properties["weight"][e]
-            if i > 0 and weight + total_time > T_STEP:
-                max_i = i
-                break
-            elif i == 0 and weight + total_time > T_STEP:
-                max_i = 1
-                total_time = weight
-                break
-            else:
-                total_time = total_time + weight
-
-        v['cur_node'] = g.vertex_properties['_graphml_vertex_id'][e.source()]
-        v['cur_xy'] = lion_nodes.loc[v['cur_node']]
-        v['cur_route'] = [g.vertex_properties['_graphml_vertex_id'][n] for n in nodes]
-        
-        
-        weights = [g.edge_properties["weight"][e] for e in edges]
-        
-
 assign = greedy_assign
 
-def draw_assign(assignment, lion_nodes, lion_rg, joined_stops, road_graph, vehicles, travel, t):
+def draw_assign(assignment, lion_nodes, lion_rg, joined_stops, road_graph, vehicles, travel, t, g, vmr):
     ax = lion_rg.plot(figsize=(16, 40))
-    joined_stops["geometry"] = gpd.GeoSeries(joined_stops["geometry_old"])
-    joined_stops.loc[[a.o for b in assignment for a in b[0]]].plot(ax=ax, color='red', zorder=5)
-    joined_stops.loc[[a.d for b in assignment for a in b[0]]].plot(ax=ax, color='green', zorder=5)
+    #joined_stops.loc[[a.o for b in assignment for a in b[0]]].plot(ax=ax, color='red', zorder=5)
+    #joined_stops.loc[[a.d for b in assignment for a in b[0]]].plot(ax=ax, color='green', zorder=5)
+    lion_nodes.loc[[a.road_o for b in assignment for a in b[0]]].plot(ax=ax, color='red', zorder=5)
+    lion_nodes.loc[[a.road_d for b in assignment for a in b[0]]].plot(ax=ax, color='green', zorder=5)
     vehicles_by_index = dict(vehicles)
     for trips, v in assignment:
         vehicle = vehicles_by_index[v]
-        ax.scatter([vehicle["cur_xy"].x], [vehicle["cur_xy"].y], zorder=5, color='orange')
+        lion_nodes.loc[[vehicle["cur_node"]]].plot(ax=ax, color='orange', zorder=5)
         cost, path = travel(t, vehicle, list(trips))
         cur_node = vehicle["cur_node"]
-        path_nodes = []
-        for r, p_or_d in path:
-            if p_or_d == 'p':
-                o_or_d = joined_stops.loc[r.o]['index_right']
-            else:
-                o_or_d = joined_stops.loc[r.d]['index_right']
-            path_nodes += nx.algorithms.dijkstra_path(road_graph, cur_node, o_or_d)
-            cur_node = o_or_d
+        path_nodes, path_edges = parse_travel_path(path, vehicle, joined_stops, g, vmr)
         edges = list(zip(path_nodes, path_nodes[1:]))
         indices = [road_graph.edges[e]['ix'] for e in edges if e[0] != e[1]]
         lion_rg.loc[indices].plot(color='yellow', ax=ax, zorder=5)
-        return bad_boys
+    return ax
         
 
 def draw_assign_graph(assignment, lion_nodes, lion_rg, joined_stops, road_graph, vehicles, travel, t):
