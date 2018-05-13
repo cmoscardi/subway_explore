@@ -69,13 +69,15 @@ class Sim(object):
         logging.debug("RV graph generating....")
         self.rr_g, self.rv_g = self.gen_rv_graph(self.t, self.passengers, self.vehicles, debug=debug)
         logging.debug("RV graph generating....done.")
+        print("RV done, RTV")
 
         logging.debug("RTV graph generating....")
         self.Tk, self.rtv_g = self.gen_rtv_graph(self.t, self.vehicles, self.rv_g, self.rr_g)
         logging.debug("RTV graph generating....done.")
+        print("RTV done, assign")
         
-        self.assignment = assign(self.rtv_g, self.Tk)
-        logging.debug("Assignment is {}".format(self.assignment)
+        self.assignment = assign(self.rtv_g, self.Tk, self.vehicles)
+        logging.debug("Assignment is {}".format(self.assignment))
 
         self.update_vehicles_passengers_t()
 

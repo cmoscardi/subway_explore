@@ -36,7 +36,7 @@ def init_rtv(travel):
             for j, (r1, ) in enumerate(Tk[0]):
                 for (r2, ) in Tk[0][j+1:]:
                     #return r1, r2
-                    T = (r1, r2)
+                    T = tuple(sorted((r1, r2)))
                     if T not in rr_g.edges:
                         continue
                     a, b = travel(t, v, list(T))
@@ -47,33 +47,43 @@ def init_rtv(travel):
                         rtv_g.add_edge(r2, T)
             logging.debug("Size 2 done")
             # trips of size N
-            for k in range(2, v["capacity"]):
-                logging.debug("Size %s done", k)
+            for k in range(3, v["capacity"] + 1):
                 Tk.append([])
-                for j, t1 in enumerate(Tk[k - 1]):
-                    for t2 in Tk[k-1][j + 1:]:
+                for j, t1 in enumerate(Tk[k - 2]):
+                    for t2 in Tk[k-2][j + 1:]:
+                        logging.debug("comparing {}, {}".format(t1, t2))
                         U = set(t1).union(set(t2))
-                        if len(U) != k + 1:
+                        logging.debug("U is {}".format(U))
+                        if len(U) != k:
+                            logging.debug("YIKES!")
                             continue
-                        if not check_subtrips(U, Tk[k-1]):
+                        if not check_subtrips(U, Tk[k-2]):
+                            logging.debug("DOUBLE YIKES!")
                             continue
-                        canonical = sorted(tuple(U))
+                        canonical = tuple(sorted(U))
+                        if canonical in Tk[k-1]:
+                            logging.debug("Already found")
+                            continue
                         a, b = travel(t, v, list(canonical))
                         if not a:
                             continue
                         Tk[-1].append(canonical)
                         for r_i in canonical:
                             rtv_g.add_edge(r_i, canonical)
-                        rtv_g.add_edge(canonical, v, weight=a)
+                        rtv_g.add_edge(canonical, i, weight=a)
+                logging.debug("Size %s done", k)
             Tks_for_vehicle.append(Tk)
         return sum((list(x) for x in zip(*Tks_for_vehicle)), []), rtv_g
     return gen_rtv
 
 def check_subtrips(U, tk):
-    tk = set(tuple(sorted((t))) for t in tk)
+    tk = set(tk)
+    logging.debug("Tk is %s", tk)
     #print tk
     for trip in U:
-        if tuple(sorted(tuple((U - set(trip))))) not in tk:
+        left_out = tuple(sorted((U - set([trip]))))
+        logging.debug("Left out is %s", left_out)
+        if left_out not in tk:
             return False
     return True
 

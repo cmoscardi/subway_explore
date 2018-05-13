@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from graph_tool import topology
 import geopandas as gpd
 import numpy as np
@@ -6,10 +8,10 @@ import networkx as nx
 from .config import T_STEP
 from .travel import parse_travel_path
 
-def greedy_assign(rtvg, T):
+def greedy_assign(rtvg, T, vehicles):
     R_ok = set()
     V_ok = set()
-    assignment = set()
+    assignment = defaultdict(tuple)
     for k, Tk in zip(range(len(T), 0, -1), T[::-1]):
         if not Tk:
             continue
@@ -21,9 +23,13 @@ def greedy_assign(rtvg, T):
             if v in V_ok:
                 continue
             [R_ok.add(t) for t in trip]
-            assignment.add((trip, v))
+            assignment[v] = trip
             V_ok.add(v)
-    return assignment
+    for i, v in vehicles:
+        for p in v["passengers"]:
+            assignment[i] = assignment[i] + (p,)
+
+    return set((v, k) for k, v in assignment.items())
 
 
 assign = greedy_assign
@@ -36,9 +42,12 @@ def draw_assign(assignment, lion_nodes, lion_rg, joined_stops, road_graph, vehic
     lion_nodes.loc[[a.road_d for b in assignment for a in b[0]]].plot(ax=ax, color='green', zorder=5)
     vehicles_by_index = dict(vehicles)
     for trips, v in assignment:
+        print(v)
+        print(trips)
         vehicle = vehicles_by_index[v]
         lion_nodes.loc[[vehicle["cur_node"]]].plot(ax=ax, color='orange', zorder=5)
-        cost, path = travel(t, vehicle, list(trips))
+        trips = list(set(trips) - set(vehicle["passengers"]))
+        cost, path = travel(t, vehicle, trips)
         cur_node = vehicle["cur_node"]
         path_nodes, path_edges = parse_travel_path(path, vehicle, joined_stops, g, vmr)
         edges = list(zip(path_nodes, path_nodes[1:]))

@@ -27,17 +27,18 @@ def init_travel(joined_stops, skim_graph, road_skim_lookup):
         requests: (o, d, t) tuples
         """
         dropoffs = ((p, 'd') for p in vehicle['passengers'] + requests)
+        logging.debug("dropoffs is %s", dropoffs)
         pickups = ((p, 'p') for p in requests)
         
         best_order = None
         min_cost = None
         # TODO: parallelize
         for pd_order in permutations(chain(pickups, dropoffs)):
-            logging.debug("trying permutation %s... ", pd_order)
+            # logging.debug("trying permutation %s... ", pd_order)
             if not legal(pd_order, 
                          len(vehicle["passengers"]),
                          vehicle["capacity"]):
-                logging.debug("... it was illegal.")
+                # logging.debug("... it was illegal.")
                 continue
             first_stop = pd_order[0][0][0] if pd_order[0][1] == 'p' else pd_order[0][0][1]
             first_rg_node = joined_stops.loc[first_stop]["index_right"]
@@ -72,9 +73,9 @@ def compute_cost(t, time_to_first, joined_stops, road_skim_lookup, pd_order):
     cur_time = t
     cur_stop = None
     passenger, p_or_d = pd_order[0]
-    logging.debug("time is {}".format(t))
+    #logging.debug("time is {}".format(t))
     ttf = timedelta(seconds=time_to_first)
-    logging.debug("ttf is {}".format(ttf))
+    #logging.debug("ttf is {}".format(ttf))
     #import pdb; pdb.set_trace()
     if p_or_d == 'p':            
         costs_by_passenger[passenger]['pickup_time'] = t + ttf
