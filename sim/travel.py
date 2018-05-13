@@ -2,6 +2,7 @@ from collections import defaultdict, namedtuple
 from datetime import timedelta
 import logging
 from itertools import permutations, chain
+from joblib import Parallel, delayed
 
 import geopandas as gpd
 from graph_tool import topology
@@ -18,7 +19,11 @@ from .config import VEHICLE_CAPACITY, N_VEHICLES, OMEGA, DELTA
 from .loader import load_road_graph
 from .helpers import memoize
 
-def init_travel(joined_stops, skim_graph, road_skim_lookup):
+rgs = None
+def init_travel(joined_stops, rgs_init):
+    global rgs
+    rgs = rgs_init
+    p = Parallel(n_jobs=12)
     def travel(t, vehicle,
                requests):
         """
@@ -30,31 +35,33 @@ def init_travel(joined_stops, skim_graph, road_skim_lookup):
         logging.debug("dropoffs is %s", dropoffs)
         pickups = ((p, 'p') for p in requests)
         
-        best_order = None
-        min_cost = None
-        # TODO: parallelize
-        for pd_order in permutations(chain(pickups, dropoffs)):
-            # logging.debug("trying permutation %s... ", pd_order)
-            if not legal(pd_order, 
-                         len(vehicle["passengers"]),
-                         vehicle["capacity"]):
-                # logging.debug("... it was illegal.")
-                continue
-            first_stop = pd_order[0][0][0] if pd_order[0][1] == 'p' else pd_order[0][0][1]
-            first_rg_node = joined_stops.loc[first_stop]["index_right"]
-            time_to_first = road_skim_lookup(vehicle["cur_node"], first_rg_node)
-            cost = compute_cost(t, time_to_first, joined_stops, road_skim_lookup,
-                                pd_order)
-            if cost == -1:
-                continue
-                
-            if not min_cost or cost < min_cost:
-                order = [p.o if pord == 'p' else p.d for p, pord in pd_order]
-                min_cost = cost
-                best_order = pd_order
+        # TODO: parallelize nicely?
+        g = permutations(chain(pickups, dropoffs))
+        result = (proc_cost(pd_order, vehicle, joined_stops, t) for pd_order in g)
+        best_order, min_cost = min(result, key=lambda x: x[1]\
+                                           if x[1] is not None\
+                                           else float('inf'))
         return min_cost, best_order
     return travel
 
+
+def proc_cost(pd_order, vehicle, joined_stops, t):
+    # logging.debug("trying permutation %s... ", pd_order)
+    if not legal(pd_order, 
+                 len(vehicle["passengers"]),
+                 vehicle["capacity"]):
+        # logging.debug("... it was illegal.")
+        return None, None
+    first_stop = pd_order[0][0][0] if pd_order[0][1] == 'p' else pd_order[0][0][1]
+    first_rg_node = joined_stops.loc[first_stop]["index_right"]
+    time_to_first = rgs[2][rgs[1][vehicle["cur_node"]]][rgs[1][first_rg_node]]
+    cost = compute_cost(t, time_to_first, joined_stops, rgs,
+                        pd_order)
+    if cost == -1:
+        return None, None
+
+    return pd_order, cost
+        
 def legal(pd_order, n_passengers, capacity):
     indices_by_passenger = defaultdict(dict)
     cur_count = n_passengers
@@ -68,7 +75,7 @@ def legal(pd_order, n_passengers, capacity):
             return False
     return True
 
-def compute_cost(t, time_to_first, joined_stops, road_skim_lookup, pd_order):
+def compute_cost(t, time_to_first, joined_stops, rgs, pd_order):
     costs_by_passenger = defaultdict(dict)
     cur_time = t
     cur_stop = None
@@ -95,7 +102,8 @@ def compute_cost(t, time_to_first, joined_stops, road_skim_lookup, pd_order):
         next_stop = passenger[od]
         cur_node = joined_stops.loc[cur_stop]['index_right']
         next_node = joined_stops.loc[next_stop]['index_right']
-        ttn = timedelta(seconds=road_skim_lookup(cur_node, next_node))
+        ttn = rgs[2][rgs[1][cur_node]][rgs[1][next_node]]
+        ttn = timedelta(seconds=ttn)
         next_time = cur_time + ttn
         costs_by_passenger[passenger][key] = next_time
         cur_stop = next_stop

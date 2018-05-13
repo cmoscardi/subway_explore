@@ -110,7 +110,7 @@ class Sim(object):
 
     def init(self):
         self.load()
-        self.travel = init_travel(self.joined_stops, self.skim_graph, self.road_skim_lookup)
+        self.travel = init_travel(self.joined_stops, self.rgs)
         self.gen_rv_graph = init_rv_graph(self.joined_stops, self.travel)
         self.gen_rtv_graph = init_rtv(self.travel)
   
