@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 import geopandas as gpd
 from shapely.geometry import Point
 
-from .config import OMEGA, DELTA, VEHICLE_CAPACITY
+from .config import OMEGA, DELTA, VEHICLE_CAPACITY, T_STEP
 
 
 Passenger = namedtuple("Passenger", ["o", "d", "t", "tpl", "t_star", "road_o", "road_d"])
@@ -16,10 +16,12 @@ def init_passenger(o, d, t, joined_stops, road_skim_lookup):
     try:
         road_o, road_d = joined_stops.loc[[o, d]]["index_right"]
         shortest = road_skim_lookup(road_o, road_d)
+        rnd = np.random.uniform(0, T_STEP)
+        rt = t - timedelta(seconds=rnd)
     except:
         raise
-    return Passenger(o, d, t, t + timedelta(seconds=OMEGA), 
-                     t + timedelta(seconds=(shortest)),
+    return Passenger(o, d, rt, rt + timedelta(seconds=OMEGA),
+                     rt + timedelta(seconds=(shortest)),
                      road_o, road_d)
 
 
