@@ -132,7 +132,7 @@ class Sim(object):
         self.init_demands()
 
 if __name__ == "__main__":
-    s = main.Sim()
+    s = Sim()
     s.init()
-    while s.t <= s.TIM_TIME:
+    while s.t <= SIM_TIME:
         s.step()
