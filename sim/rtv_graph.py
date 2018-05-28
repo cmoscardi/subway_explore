@@ -22,9 +22,7 @@ def init_rtv(travel_set):
     global p
     travel = travel_set
     p2 = psutil.Process(os.getpid())
-    print(p2.cpu_affinity())
     p2.cpu_affinity(range(multiprocessing.cpu_count()))
-    print(p2.cpu_affinity())
     p = joblib.Parallel(n_jobs=-2, batch_size=1, backend='multiprocessing',
                         pre_dispatch=1, max_nbytes=None, verbose=11)
     p = p.__enter__()

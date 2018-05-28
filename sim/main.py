@@ -130,3 +130,9 @@ class Sim(object):
 
         self.start = self.t = datetime(2018, 1, 1)
         self.init_demands()
+
+if __name__ == "__main__":
+    s = main.Sim()
+    s.init()
+    while s.t <= s.TIM_TIME:
+        s.step()
