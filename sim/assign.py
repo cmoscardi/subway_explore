@@ -1,4 +1,5 @@
 from collections import defaultdict
+from itertools import groupby
 
 from graph_tool import topology
 import geopandas as gpd
@@ -12,11 +13,11 @@ def greedy_assign(rtvg, T, vehicles):
     R_ok = set()
     V_ok = set()
     assignment = defaultdict(tuple)
-    for k, Tk in zip(range(len(T), 0, -1), T[::-1]):
-        if not Tk:
-            continue
-        Sk = sorted((e for e in rtvg.edges(Tk) if isinstance(e[1], int) or isinstance(e[0], int)),
-                    key=lambda e: rtvg.edges[e]["weight"])
+    all_trips = sorted(set.union(*T), key=lambda t: -len(t))
+    for l, t in groupby(all_trips, key=lambda x: len(x)):
+        s = set(t)
+        Sk = sorted((e for e in rtvg.edges(s) if isinstance(e[0], int) or isinstance(e[1], int)),
+                    key=lambda x: rtvg.edges[x]['weight'])
         for trip, v in Sk:
             if np.any([t in R_ok for t in trip]):
                 continue

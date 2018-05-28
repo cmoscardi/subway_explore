@@ -33,7 +33,6 @@ def test():
     s.init()
     s.passengers = set([new_passenger(s, i) for i in range(3)])
     s.vehicles = [(0, new_vehicle(s))]
-    s.step()
     return s
 
 def test_step(s, ax):

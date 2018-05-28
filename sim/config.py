@@ -8,7 +8,7 @@ OMEGA = 10. * 60
 DELTA = 8. * 60
 
 # set to number of cores
-N_JOBS = 4
+N_JOBS = 10
 
 
 # times, seconds

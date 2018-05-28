@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 import logging
+import os
 
 import numpy as np
 import pandas as pd
@@ -9,9 +10,11 @@ from .config import N_VEHICLES, T_STEP, SIM_TIME
 from .inits import init_passenger
 from .loader import load_road_graph, load_lion, merge_lion_road, load_skim_graph, load_demands, merge_stops_demands, load_turnstile_counts, load_road_skim_graph
 from .rv_graph import init_rv_graph
-from .rtv_graph import init_rtv
+from .rtv_graph import init_rtv, gen_rtv
 from .travel import init_travel
 from .vehicle import init_vehicle, move_vehicles
+
+
 
 class Sim(object):
     def load(self):
@@ -30,17 +33,14 @@ class Sim(object):
 
 
     def set_passengers(self, origins_at_t, dests, seconds):
-        self.passengers = []
         counter = 0
         for o, n in zip(origins_at_t.index, origins_at_t):
             for i in range(n):
-                self.passengers.append(init_passenger(o, dests[counter],
+                self.passengers.add(init_passenger(o, dests[counter],
 						      self.t,
                                                       self.joined_stops,
                                                       self.road_skim_lookup))
                 counter = counter + 1
-
-        assert len(self.passengers) == origins_at_t.sum()
 
         canonical_requests = self.demands_with_stops[(self.demands_with_stops["sim_time"] <= seconds) & (self.demands_with_stops["sim_time"] > (seconds - T_STEP))]
 
@@ -54,9 +54,13 @@ class Sim(object):
                                                self.joined_stops,
                                                self.road_skim_lookup)\
                                 for ix, r in canonical_requests.iterrows()]
-        self.passengers += canonical_passengers
-        self.passengers = set(self.passengers)
+        self.passengers = self.passengers.union(canonical_passengers)
 
+    def prune_rv(self):
+        nodes = [n for n in self.rv_g.nodes if isinstance(n, int) and len(self.rv_g[n]) > 15]
+        for n in nodes:
+            to_delete = sorted(self.rv_g[n], key=lambda x: self.rv_g[n][x]['weight'])[15:]
+            self.rv_g.remove_nodes_from(to_delete)
     def step(self, debug=False):
         seconds = (self.t - self.start).total_seconds()
         origins_at_t = self.origins.loc[seconds]
@@ -68,6 +72,7 @@ class Sim(object):
 
         logging.debug("RV graph generating....")
         self.rr_g, self.rv_g = self.gen_rv_graph(self.t, self.passengers, self.vehicles, debug=debug)
+        self.prune_rv()
         logging.debug("RV graph generating....done.")
         print("RV done, RTV")
 
@@ -105,6 +110,8 @@ class Sim(object):
 
         self.demands_with_stops["sim_time"] = self.demands_with_stops["TRP_DEP_HR"].apply(lambda x: x if x < 5 else 0) * 3600. + self.demands_with_stops["TRP_DEP_MIN"] * 60.
 
+        self.passengers = set()
+
     def get_x_ys(self,  n_vehicles):
         return ((s.geometry.x, s.geometry.y, ix) for ix, s in self.rg_nodes.sample(n_vehicles).iterrows())
 
@@ -112,7 +119,8 @@ class Sim(object):
         self.load()
         self.travel = init_travel(self.joined_stops, self.rgs)
         self.gen_rv_graph = init_rv_graph(self.joined_stops, self.travel)
-        self.gen_rtv_graph = init_rtv(self.travel)
+        init_rtv(self.travel)
+        self.gen_rtv_graph = gen_rtv
   
 
 

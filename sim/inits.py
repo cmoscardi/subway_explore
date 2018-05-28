@@ -2,6 +2,7 @@ from collections import namedtuple
 from datetime import datetime, timedelta
 
 import geopandas as gpd
+import numpy as np
 from shapely.geometry import Point
 
 from .config import OMEGA, DELTA, VEHICLE_CAPACITY, T_STEP
