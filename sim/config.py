@@ -1,5 +1,5 @@
 VEHICLE_CAPACITY = 4
-N_VEHICLES = 100
+N_VEHICLES = 500
 
 # maximum waiting time, secs
 OMEGA = 10. * 60

@@ -25,7 +25,7 @@ def init_travel(joined_stops, rgs_init):
     rgs = rgs_init
     p = Parallel(n_jobs=12)
     def travel(t, vehicle,
-               requests):
+               requests, must_travel=False):
         """
         As per alonso-mora paper
         
@@ -37,15 +37,16 @@ def init_travel(joined_stops, rgs_init):
         
         # TODO: parallelize nicely?
         g = permutations(chain(pickups, dropoffs))
-        result = (proc_cost(pd_order, vehicle, joined_stops, t) for pd_order in g)
+        result = (proc_cost(pd_order, vehicle, joined_stops, t, must_travel) for pd_order in g)
         best_order, min_cost = min(result, key=lambda x: x[1]\
                                            if x[1] is not None\
                                            else float('inf'))
+
         return min_cost, best_order
     return travel
 
 
-def proc_cost(pd_order, vehicle, joined_stops, t):
+def proc_cost(pd_order, vehicle, joined_stops, t, must_travel=False):
     # logging.debug("trying permutation %s... ", pd_order)
     if not legal(pd_order, 
                  len(vehicle["passengers"]),
@@ -56,7 +57,7 @@ def proc_cost(pd_order, vehicle, joined_stops, t):
     first_rg_node = joined_stops.loc[first_stop]["index_right"]
     time_to_first = rgs[2][rgs[1][vehicle["cur_node"]]][rgs[1][first_rg_node]]
     cost = compute_cost(t, time_to_first, joined_stops, rgs,
-                        pd_order)
+                        pd_order, must_travel)
     if cost == -1:
         return None, None
 
@@ -75,7 +76,7 @@ def legal(pd_order, n_passengers, capacity):
             return False
     return True
 
-def compute_cost(t, time_to_first, joined_stops, rgs, pd_order):
+def compute_cost(t, time_to_first, joined_stops, rgs, pd_order, must_travel=False):
     costs_by_passenger = defaultdict(dict)
     cur_time = t
     cur_stop = None
@@ -110,10 +111,15 @@ def compute_cost(t, time_to_first, joined_stops, rgs, pd_order):
         cur_time = next_time
     total_cost = 0
     for passenger, cost in costs_by_passenger.items():
+        thing = (passenger.t_star + timedelta(seconds=DELTA + 5))
         if "pickup_time" in cost and cost["pickup_time"] > passenger.tpl:
             return -1
-        elif cost["dropoff_time"] > (passenger.t_star + timedelta(seconds=DELTA)):
-            return -1
+        elif cost["dropoff_time"] > thing:
+            if must_travel:
+                total_cost += 1000000
+                continue
+            else:
+                return -1
         total_cost += (cost["dropoff_time"] - passenger.t_star).total_seconds()
     #return costs_by_passenger
     return total_cost

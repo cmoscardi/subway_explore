@@ -14,6 +14,8 @@ import numpy as np
 from .config import N_JOBS
 from .inits import Passenger
 
+# cutoff, in seconds
+CUTOFF = 10
 
 travel = None
 p = None
@@ -40,7 +42,9 @@ def gen_rtv(t, vehicles, rv_g, rr_g):
                 rtv_g.add_edge(r, T)
     return [t[0] for t in Tks_for_vehicle], rtv_g
 
+import time
 def handle_vehicle(t, i, v, rv_g, rr_g):
+    start_t = time.time()
     try:
         rv_edges = rv_g.edges(i)
     except nx.NetworkXError as e:
@@ -62,6 +66,9 @@ def handle_vehicle(t, i, v, rv_g, rr_g):
     Tk.append([])
     for j, (r1, ) in enumerate(Tk[0]):
         for (r2, ) in Tk[0][j+1:]:
+            if time.time() - start_t > CUTOFF:
+                ret = set.union(*[set(t) for t in Tk])
+                return ret, weights_by_trip
             #return r1, r2
             T = tuple(sorted((r1, r2)))
             if T not in rr_g.edges:
@@ -72,10 +79,18 @@ def handle_vehicle(t, i, v, rv_g, rr_g):
                 weights_by_trip[T] = a
                 
     logging.debug("Size 2 done")
+    if time.time() - start_t > CUTOFF:
+        ret = set.union(*[set(t) for t in Tk])
+        return ret, weights_by_trip
+
     # trips of size N
     for k in range(3, v["capacity"] + 1):
         Tk.append([])
         for j, t1 in enumerate(Tk[k - 2]):
+
+            if time.time() - start_t > CUTOFF:
+                ret = set.union(*[set(t) for t in Tk])
+                return ret, weights_by_trip
             for t2 in Tk[k-2][j + 1:]:
                 logging.debug("comparing {}, {}".format(t1, t2))
                 U = set(t1).union(set(t2))
