@@ -27,7 +27,8 @@ def init_rv_graph(joined_stops, travel):
         if debug:
             print("{} requests, {} vehicles"\
                   .format(len(requests), len(vehicles)))
-        for n, r1 in enumerate(requests):
+        lr = list(requests)
+        for n, r1 in enumerate(lr):
             if debug and not (n % 10):
                 print("{} of {} requests checked".format(n, len(requests)))
 
@@ -39,7 +40,7 @@ def init_rv_graph(joined_stops, travel):
             stop = joined_stops.loc[r1.o]
             x, y, node = stop["geometry_old"].x, stop["geometry_old"].y, stop["index_right"]
             fake_vehicle = init_vehicle(x, y, node)
-            for r2 in requests:
+            for r2 in lr[n:]:
                 a = check_rr_edge(t, r1, r2, fake_vehicle)
                 if a:
                     rr_g.add_edge(r1, r2, weight=a)
