@@ -1,7 +1,7 @@
 from shapely.geometry import Point
 
 from .config import VEHICLE_CAPACITY, T_STEP
-from .travel import parse_travel_path
+from .travel import parse_travel_path, travel
 
 def init_vehicle(x, y, rg_node):
     BASE_VEHICLE = {"capacity": VEHICLE_CAPACITY,
@@ -14,7 +14,7 @@ def init_vehicle(x, y, rg_node):
     
     return BASE_VEHICLE.copy()
 
-def move_vehicles(assignment, vehicles, g, vmr, travel, t, joined_stops, lion_node, sim=None):
+def move_vehicles(assignment, vehicles, g, vmr, t, joined_stops, lion_node, sim=None):
     vehicles_by_id = dict(vehicles)
     passengers_to_remove = []
     for trips, vid in assignment:

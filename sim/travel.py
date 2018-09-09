@@ -20,30 +20,32 @@ from .loader import load_road_graph
 from .helpers import memoize
 
 rgs = None
-def init_travel(joined_stops, rgs_init):
+joined_stops = None
+def init_travel(joined_stops_init, rgs_init):
     global rgs
+    global joined_stops
+    joined_stops = joined_stops_init
     rgs = rgs_init
-    p = Parallel(n_jobs=12)
-    def travel(t, vehicle,
-               requests, must_travel=False):
-        """
-        As per alonso-mora paper
-        
-        requests: (o, d, t) tuples
-        """
-        dropoffs = ((p, 'd') for p in vehicle['passengers'] + requests)
-        logging.debug("dropoffs is %s", dropoffs)
-        pickups = ((p, 'p') for p in requests)
-        
-        # TODO: parallelize nicely?
-        g = permutations(chain(pickups, dropoffs))
-        result = (proc_cost(pd_order, vehicle, joined_stops, t, must_travel) for pd_order in g)
-        best_order, min_cost = min(result, key=lambda x: x[1]\
-                                           if x[1] is not None\
-                                           else float('inf'))
 
-        return min_cost, best_order
-    return travel
+def travel(t, vehicle,
+           requests, must_travel=False):
+    """
+    As per alonso-mora paper
+
+    requests: (o, d, t) tuples
+    """
+    dropoffs = ((p, 'd') for p in vehicle['passengers'] + requests)
+    logging.debug("dropoffs is %s", dropoffs)
+    pickups = ((p, 'p') for p in requests)
+
+    # TODO: parallelize nicely?
+    g = permutations(chain(pickups, dropoffs))
+    result = (proc_cost(pd_order, vehicle, joined_stops, t, must_travel) for pd_order in g)
+    best_order, min_cost = min(result, key=lambda x: x[1]\
+                                       if x[1] is not None\
+                                       else float('inf'))
+
+    return min_cost, best_order
 
 
 def proc_cost(pd_order, vehicle, joined_stops, t, must_travel=False):

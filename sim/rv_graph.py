@@ -6,8 +6,9 @@ import networkx as nx
 assert nx.__version__ == "2.1"
 
 from .vehicle import init_vehicle
+from .travel import travel
 
-def init_rv_graph(joined_stops, travel):
+def init_rv_graph(joined_stops):
 
     def check_rr_edge(t, r1, r2, v):
         a, b = travel(t, v, [r1, r2])

@@ -107,7 +107,6 @@ class Sim(object):
                       self.vehicles,
                       self.g,
                       self.vmr,
-                      self.travel,
                       self.t,
                       self.joined_stops,
                       self.lion_nodes, self)
@@ -135,9 +134,9 @@ class Sim(object):
 
     def init(self):
         self.load()
-        self.travel = init_travel(self.joined_stops, self.rgs)
-        self.gen_rv_graph = init_rv_graph(self.joined_stops, self.travel)
-        init_rtv(self.travel)
+        init_travel(self.joined_stops, self.rgs)
+        self.gen_rv_graph = init_rv_graph(self.joined_stops)
+        init_rtv()
         self.gen_rtv_graph = gen_rtv
   
 

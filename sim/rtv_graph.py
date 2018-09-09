@@ -13,20 +13,15 @@ import numpy as np
 
 from .config import N_JOBS
 from .inits import Passenger
+from .travel import travel
 
 # cutoff, in seconds
 CUTOFF = 10
 
-travel = None
 p = None
-def init_rtv(travel_set):
-    global travel
+def init_rtv():
     global p
-    travel = travel_set
-    p2 = psutil.Process(os.getpid())
-    p2.cpu_affinity(range(multiprocessing.cpu_count()))
-    p = joblib.Parallel(n_jobs=-2, batch_size=1, backend='multiprocessing',
-                        pre_dispatch=1, max_nbytes=None, verbose=11)
+    p = joblib.Parallel(n_jobs=-2, backend='multiprocessing', max_nbytes=None, verbose=1, batch_size=1)
     p = p.__enter__()
 
 def gen_rtv(t, vehicles, rv_g, rr_g):
