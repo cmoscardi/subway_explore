@@ -37,7 +37,7 @@ def init_rv_graph(joined_stops):
                 a = check_rv_edge(t, v, r1)
                 if a:
                     rv_g.add_edge(r1, i, weight=a)
-            
+
             stop = joined_stops.loc[r1.o]
             x, y, node = stop["geometry_old"].x, stop["geometry_old"].y, stop["index_right"]
             fake_vehicle = init_vehicle(x, y, node)
